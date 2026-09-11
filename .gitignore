@@ -1,0 +1,8 @@
+/dist/
+/browser-session
+/browser-session.exe
+*.test
+*.test.exe
+coverage.out
+sessions.json
+/browser-data/

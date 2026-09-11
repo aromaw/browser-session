@@ -1,0 +1,61 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: true
+      - name: Unit and native process lifecycle tests
+        run: go test -race -count=1 -timeout=5m ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Locate runner Chrome
+        shell: pwsh
+        run: |
+          if ($IsWindows) { $chrome = "$env:ProgramFiles\Google\Chrome\Application\chrome.exe" }
+          elseif ($IsMacOS) { $chrome = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' }
+          else { $chrome = (Get-Command google-chrome).Source }
+          if (!(Test-Path $chrome)) { throw "Chrome missing: $chrome" }
+          "BROWSER_SESSION_TEST_CHROME=$chrome" >> $env:GITHUB_ENV
+      - name: Real Chrome headless storage isolation
+        run: go test -count=1 -timeout=4m ./internal/browser -run TestChromiumStorageIsolation -v
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        target: [darwin-amd64, darwin-arm64, linux-amd64, linux-arm64, windows-amd64]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - name: Build single binary
+        shell: bash
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          export GOOS="${TARGET%-*}" GOARCH="${TARGET#*-}" CGO_ENABLED=0
+          suffix=""
+          if [ "$GOOS" = windows ]; then suffix=.exe; fi
+          mkdir -p dist
+          go build -trimpath -ldflags="-s -w -X main.version=dev-${GITHUB_SHA::7}" -o "dist/browser-session-${TARGET}${suffix}" ./cmd/browser-session
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-session-${{ matrix.target }}
+          path: dist/*
