@@ -11,8 +11,8 @@
 | 五目标 binary 交叉构建 | 五目标本地交叉构建均通过；无 CGO，单文件约 3.3–3.6 MB |
 | Linux 真实 Chrome | Chrome for Testing 153.0.8010.36 下载成功；运行被环境拒绝创建 Unix socket（EPERM），未完成浏览器测试 |
 | 本地 `/proc` 进程集成 | 工具环境的 getpid 与 /proc namespace 不一致，测试发现后产品改为拒绝清理；未假装通过 |
-| macOS / Windows GUI | 当前没有对应本地桌面，未实测 |
-| GitHub 三平台 CI | 已配置，运行结果另见 Actions；不可将“配置存在”视为“测试通过” |
+| macOS / Windows GUI | 当前没有对应本地桌面，未实测；GitHub macOS/Windows 原生生命周期测试通过 |
+| GitHub 三平台 CI | Linux/Windows 真实 Chrome Storage 测试通过；macOS hosted runner 的 headless display link 不稳定，真实 Storage 测试明确 skip，原生生命周期测试通过；不可将 skip 视为 Storage 已在 macOS 实测 |
 
 受限本地环境使用 `BROWSER_SESSION_SKIP_OS_TESTS=1 go test -race ./...`，只跳过命名明确的 OS 进程测试。CI 不设置这个变量。真实浏览器测试必须显式设置 `BROWSER_SESSION_TEST_CHROME`，否则 Go 输出 SKIP。
 

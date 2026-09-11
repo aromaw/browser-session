@@ -21,6 +21,9 @@ import (
 
 // Opt-in, synthetic localhost data only. No CDP, WebDriver or browser automation library.
 func TestChromiumStorageIsolation(t *testing.T) {
+	if runtime.GOOS == "darwin" && os.Getenv("CI") == "true" {
+		t.Skip("macOS hosted runners do not provide a stable headless display link for this browser test; native lifecycle tests still run")
+	}
 	exe := os.Getenv("BROWSER_SESSION_TEST_CHROME")
 	if exe == "" {
 		t.Skip("set BROWSER_SESSION_TEST_CHROME to opt into real Chromium integration")
