@@ -6,7 +6,6 @@ import (
 	"golang.org/x/sys/windows"
 	"os"
 	"os/exec"
-	"strings"
 	"syscall"
 	"unsafe"
 )
@@ -155,25 +154,25 @@ func snapshot() ([]Process, error) {
 		if entry.ProcessID == 0 {
 			continue
 		}
+		unreadable := Process{PID: int(entry.ProcessID), Parent: int(entry.ParentProcessID), Name: windows.UTF16ToString(entry.ExeFile[:]), Unreadable: true}
 		p, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, entry.ProcessID)
 		if err != nil {
-			name := strings.ToLower(windows.UTF16ToString(entry.ExeFile[:]))
-			if strings.Contains(name, "chrome") || strings.Contains(name, "chromium") || name == "msedge.exe" || name == "brave.exe" {
-				return nil, fmt.Errorf("cannot inspect browser PID %d", entry.ProcessID)
-			}
+			out = append(out, unreadable)
 			continue
 		}
 		var token windows.Token
 		err = windows.OpenProcessToken(p, windows.TOKEN_QUERY, &token)
 		if err != nil {
 			windows.CloseHandle(p)
-			return nil, err
+			out = append(out, unreadable)
+			continue
 		}
 		u, err := token.GetTokenUser()
 		token.Close()
 		if err != nil {
 			windows.CloseHandle(p)
-			return nil, err
+			out = append(out, unreadable)
+			continue
 		}
 		if u.User.Sid.String() != sid {
 			windows.CloseHandle(p)
@@ -183,7 +182,8 @@ func snapshot() ([]Process, error) {
 		err = windows.GetProcessTimes(p, &birth, &exit, &kernel, &user)
 		if err != nil {
 			windows.CloseHandle(p)
-			return nil, err
+			out = append(out, unreadable)
+			continue
 		}
 		if exit.LowDateTime != 0 || exit.HighDateTime != 0 {
 			windows.CloseHandle(p)
@@ -192,7 +192,8 @@ func snapshot() ([]Process, error) {
 		args, err := commandLine(p)
 		windows.CloseHandle(p)
 		if err != nil {
-			return nil, fmt.Errorf("cannot inspect process %d: %w", entry.ProcessID, err)
+			out = append(out, unreadable)
+			continue
 		}
 		out = append(out, Process{PID: int(entry.ProcessID), Parent: int(entry.ParentProcessID), Birth: fmt.Sprintf("%d:%d", birth.HighDateTime, birth.LowDateTime), Args: args})
 	}

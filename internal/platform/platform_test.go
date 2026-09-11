@@ -72,3 +72,11 @@ func TestDataDirArguments(t *testing.T) {
 		t.Fatal("prefix incorrectly matched")
 	}
 }
+
+func TestUnreadableTrackedProcessBlocksCleanup(t *testing.T) {
+	all := []Process{{PID: 10, Parent: 1, Name: "browser", Unreadable: true}, {PID: 11, Parent: 10, Name: "helper", Unreadable: true}, {PID: 99, Parent: 1, Name: "unrelated-system-service", Unreadable: true}}
+	got := Owned(all, t.TempDir(), []Process{{PID: 10, Birth: "previous"}}, 0)
+	if len(got) != 2 {
+		t.Fatalf("tracked unreadable process/descendant must remain live: %+v", got)
+	}
+}

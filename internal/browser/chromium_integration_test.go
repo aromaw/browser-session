@@ -33,6 +33,12 @@ func TestChromiumStorageIsolation(t *testing.T) {
 	var cacheCount atomic.Int32
 	var gateCount atomic.Int32
 	gate := make(chan struct{})
+	holds := map[string]chan struct{}{}
+	for _, id := range []string{"a", "b"} {
+		for _, mode := range []string{"write", "read"} {
+			holds[id+"-"+mode] = make(chan struct{})
+		}
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/report", func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
@@ -42,7 +48,16 @@ func TestChromiumStorageIsolation(t *testing.T) {
 			return
 		}
 		reports <- v
+		close(holds[v.ID+"-"+r.URL.Query().Get("mode")])
 		w.WriteHeader(204)
+	})
+	mux.HandleFunc("/hold", func(w http.ResponseWriter, r *http.Request) {
+		key := r.URL.Query().Get("id") + "-" + r.URL.Query().Get("mode")
+		select {
+		case <-holds[key]:
+			w.WriteHeader(204)
+		case <-r.Context().Done():
+		}
 	})
 	mux.HandleFunc("/barrier", func(w http.ResponseWriter, r *http.Request) {
 		if gateCount.Add(1) == 2 {
@@ -66,7 +81,7 @@ func TestChromiumStorageIsolation(t *testing.T) {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		w.Header().Set("Cache-Control", "no-store")
-		fmt.Fprint(w, probeHTML)
+		fmt.Fprint(w, strings.ReplaceAll(probeHTML, "__HOLD__", r.URL.RawQuery))
 	})
 	server := httptest.NewServer(mux)
 	defer server.Close()
@@ -78,7 +93,16 @@ func TestChromiumStorageIsolation(t *testing.T) {
 		if e != nil {
 			return e
 		}
-		extra := []string{"--headless=new", "--dump-dom", "--virtual-time-budget=10000", "--timeout=30000", "--disable-gpu"}
+		// Keep the load event pending on /hold until the asynchronous probe has
+		// reported. Virtual-time budgets can end before IndexedDB/SW work finishes.
+		filtered := args[:0]
+		for _, a := range args {
+			if a != "--new-window" {
+				filtered = append(filtered, a)
+			}
+		}
+		args = filtered
+		extra := []string{"--headless=new", "--dump-dom", "--timeout=45000", "--disable-gpu", "--disable-background-networking"}
 		if os.Getenv("BROWSER_SESSION_TEST_NO_SANDBOX") == "1" {
 			extra = append(extra, "--no-sandbox")
 		}
@@ -144,7 +168,7 @@ func TestChromiumStorageIsolation(t *testing.T) {
 	}
 }
 
-const probeHTML = `<!doctype html><meta charset="utf-8"><title>Local storage isolation probe</title><script>
+const probeHTML = `<!doctype html><meta charset="utf-8"><title>Local storage isolation probe</title><img src="/hold?__HOLD__"><script>
 (async()=>{
  const q=new URLSearchParams(location.search),id=q.get('id'),mode=q.get('mode');
  const report={id,before:{},after:{},error:''};
@@ -169,7 +193,7 @@ const probeHTML = `<!doctype html><meta charset="utf-8"><title>Local storage iso
   }
   db.close();
  }catch(e){report.error=String(e)}
- await fetch('/report',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(report)});
+ await fetch('/report?mode='+mode,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(report)});
  document.body.textContent='Complete';
 })()
 </script><body>Running synthetic localhost checks</body>`

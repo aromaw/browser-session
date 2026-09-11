@@ -174,10 +174,15 @@ func (l Launcher) Launch(exe, dir string, urls []string) (*exec.Cmd, error) {
 	}
 	return c, nil
 }
-func (l Launcher) IsRunning(dir string, known []platform.Process, group int) ([]platform.Process, error) {
+func (l Launcher) IsRunning(exe, dir string, known []platform.Process, group int) ([]platform.Process, error) {
 	all, e := platform.Snapshot()
 	if e != nil {
 		return nil, e
+	}
+	for _, p := range all {
+		if p.Unreadable && strings.EqualFold(p.Name, filepath.Base(exe)) {
+			return nil, fmt.Errorf("cannot inspect browser PID %d; data retained", p.PID)
+		}
 	}
 	return platform.Owned(all, dir, known, group), nil
 }

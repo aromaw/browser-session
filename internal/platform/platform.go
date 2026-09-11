@@ -11,11 +11,13 @@ import (
 )
 
 type Process struct {
-	PID    int      `json:"pid"`
-	Parent int      `json:"-"`
-	Group  int      `json:"-"`
-	Birth  string   `json:"birth"`
-	Args   []string `json:"-"`
+	PID        int      `json:"pid"`
+	Parent     int      `json:"-"`
+	Group      int      `json:"-"`
+	Birth      string   `json:"birth"`
+	Args       []string `json:"-"`
+	Name       string   `json:"-"`
+	Unreadable bool     `json:"-"`
 }
 
 func DataHome() (string, error) {
@@ -104,7 +106,7 @@ func Owned(all []Process, dir string, known []Process, group int) []Process {
 			ids[p.PID] = true
 		}
 		for _, old := range known {
-			if old.PID == p.PID && old.Birth == p.Birth {
+			if old.PID == p.PID && (old.Birth == p.Birth || p.Unreadable) {
 				ids[p.PID] = true
 			}
 		}

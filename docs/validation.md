@@ -8,7 +8,7 @@
 | --- | --- |
 | Go 工具链 | Go 1.27.1 linux/amd64，官方下载 SHA256 已校验 |
 | 单元测试、race、文件锁、路径/输入校验 | 通过；与真实进程 namespace 相关的测试显式跳过 |
-| 五目标 binary 交叉构建 | 五目标本地交叉构建均通过；无 CGO，单文件约 3 MB |
+| 五目标 binary 交叉构建 | 五目标本地交叉构建均通过；无 CGO，单文件约 3.3–3.6 MB |
 | Linux 真实 Chrome | Chrome for Testing 153.0.8010.36 下载成功；运行被环境拒绝创建 Unix socket（EPERM），未完成浏览器测试 |
 | 本地 `/proc` 进程集成 | 工具环境的 getpid 与 /proc namespace 不一致，测试发现后产品改为拒绝清理；未假装通过 |
 | macOS / Windows GUI | 当前没有对应本地桌面，未实测 |

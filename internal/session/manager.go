@@ -59,7 +59,7 @@ func (s *Store) active(v Session, r Run) ([]platform.Process, error) {
 		r.Group = 0
 		r.Processes = nil
 	}
-	return (browser.Launcher{}).IsRunning(dir, r.Processes, r.Group)
+	return (browser.Launcher{}).IsRunning(v.Browser.Executable, dir, r.Processes, r.Group)
 }
 func (s *Store) Status(v Session) string {
 	l, ok, e := s.runLock(v.ID)
@@ -313,6 +313,10 @@ func (s *Store) removeStopped(v Session) error {
 		return e
 	}
 	defer l.Close()
+	return s.removeStoppedLocked(v)
+}
+
+func (s *Store) removeStoppedLocked(v Session) error {
 	c, e := s.Read()
 	if e != nil {
 		return e
@@ -387,6 +391,13 @@ func (s *Store) deleteIfIdle(v Session, cleanup bool) error {
 		return errors.New("session is running")
 	}
 	defer life.Close()
+	// Re-read state under the store lock: create may have been between its
+	// metadata commit and temporary reservation when cleanup first saw it.
+	l, e := s.lock("store")
+	if e != nil {
+		return e
+	}
+	defer l.Close()
 	r, e := s.readRun(v.ID)
 	if e != nil && !os.IsNotExist(e) {
 		return e
@@ -406,7 +417,7 @@ func (s *Store) deleteIfIdle(v Session, cleanup bool) error {
 			time.Sleep(250 * time.Millisecond)
 		}
 	}
-	return s.removeStopped(v)
+	return s.removeStoppedLocked(v)
 }
 func (s *Store) Cleanup() []string {
 	c, e := s.Read()
