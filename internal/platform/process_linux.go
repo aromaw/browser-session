@@ -1,6 +1,7 @@
 package platform
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -30,7 +31,7 @@ func snapshot() ([]Process, error) {
 			continue
 		}
 		raw, e := os.ReadFile(filepath.Join(d, "stat"))
-		if os.IsNotExist(e) {
+		if os.IsNotExist(e) || errors.Is(e, syscall.ESRCH) {
 			continue
 		}
 		if e != nil {
@@ -50,7 +51,7 @@ func snapshot() ([]Process, error) {
 		parent, _ := strconv.Atoi(fields[1])
 		group, _ := strconv.Atoi(fields[2])
 		cmd, e := os.ReadFile(filepath.Join(d, "cmdline"))
-		if os.IsNotExist(e) {
+		if os.IsNotExist(e) || errors.Is(e, syscall.ESRCH) {
 			continue
 		}
 		if e != nil {

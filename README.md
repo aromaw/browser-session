@@ -8,7 +8,7 @@
 
 需要本机已经安装 **Google Chrome 或 Chromium**。MVP 自动发现这两种浏览器；其他 Chromium 浏览器可手动指定 executable，但尚未作为受支持目标验收。
 
-从本仓库 Actions 中下载对应平台构建产物并放到 PATH，或使用当前稳定版 Go 编译：
+从本仓库 Actions 中下载对应平台构建产物。解压后，将文件重命名为 `browser-session`（Windows 为 `browser-session.exe`）并放到 PATH。macOS/Linux 还需执行 `chmod +x browser-session`。也可使用当前稳定版 Go 编译：
 
 ```sh
 git clone https://github.com/aromaw/browser-session.git

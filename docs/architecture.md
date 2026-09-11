@@ -30,7 +30,7 @@ Supervisor 不开放 TCP、HTTP 或调试端口。一个 Session 一个看护进
 
 - Linux：`/proc/*/{stat,cmdline}`，PID、PPID、PGID、启动 tick；排除 zombie。
 - macOS：`sysctl kern.proc.uid` 和 `kern.procargs2`，PID、PPID、PGID、启动时间；排除 zombie。
-- Windows：Toolhelp32、进程 token SID、GetProcessTimes、NtQueryInformationProcess 的 ProcessCommandLineInformation（Windows 10/11 目标）。Boot identity 由 SystemBootEnvironmentInformation 获取。Native API 失败时保留数据。
+- Windows：Toolhelp32、进程 token SID、GetProcessTimes、NtQueryInformationProcess 的 ProcessCommandLineInformation（Windows 10/11 目标）。Boot identity 由 SystemBootEnvironmentInformation 获取。目标浏览器/已知后代不可读时保留数据；不会因为不相关的受保护系统服务不可读就阻止全部 Session。
 
 所有参数仅用于本机内存中的所属判断，不持久化完整 argv，也不记录浏览器标准输出/错误。记录 PID 与启动标识，避免 PID 重用造成错误归属；重启后不再信任旧启动周期的进程组和进程列表。
 

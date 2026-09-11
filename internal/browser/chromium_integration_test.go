@@ -1,6 +1,7 @@
 package browser
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -103,12 +105,27 @@ func TestChromiumStorageIsolation(t *testing.T) {
 		}
 		args = filtered
 		extra := []string{"--headless=new", "--dump-dom", "--timeout=45000", "--disable-gpu", "--disable-background-networking"}
+		if runtime.GOOS == "darwin" {
+			// Synthetic test profiles only: unattended runners have no user to
+			// approve Keychain dialogs. Never add these flags to product defaults.
+			extra = append(extra, "--use-mock-keychain", "--password-store=basic")
+		}
 		if os.Getenv("BROWSER_SESSION_TEST_NO_SANDBOX") == "1" {
 			extra = append(extra, "--no-sandbox")
 		}
 		c := exec.CommandContext(ctx, exe, append(extra, args...)...)
-		// Discard output, even in tests. Failures are reported through synthetic probe results.
-		return c.Run()
+		// Only this opt-in localhost test captures startup diagnostics. These
+		// profiles contain synthetic data and no user accounts; the CLI never logs browser output.
+		var stderr bytes.Buffer
+		c.Stderr = &stderr
+		if e = c.Run(); e != nil {
+			b := stderr.String()
+			if len(b) > 3000 {
+				b = b[len(b)-3000:]
+			}
+			return fmt.Errorf("%w; synthetic-browser startup: %s", e, b)
+		}
+		return nil
 	}
 	phase := func(mode string) map[string]report {
 		var wg sync.WaitGroup
