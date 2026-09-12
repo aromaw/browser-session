@@ -87,14 +87,36 @@ var enumWindows = user32.NewProc("EnumWindows")
 var windowPID = user32.NewProc("GetWindowThreadProcessId")
 var postMessage = user32.NewProc("PostMessageW")
 
-func CloseBrowser(p *os.Process) error {
+type BrowserControl struct {
+	h   windows.Handle
+	pid int
+}
+
+// The original os.Process handle is still held by exec.Cmd here. Retaining our
+// own handle prevents PID reuse even after the concurrent Wait has returned.
+func CaptureBrowser(p *os.Process) (*BrowserControl, error) {
+	h, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION|windows.SYNCHRONIZE, false, uint32(p.Pid))
+	if err != nil {
+		return nil, err
+	}
+	return &BrowserControl{h: h, pid: p.Pid}, nil
+}
+func (c *BrowserControl) Release() { _ = windows.CloseHandle(c.h) }
+func (c *BrowserControl) CloseWindow() error {
+	state, err := windows.WaitForSingleObject(c.h, 0)
+	if err != nil {
+		return err
+	}
+	if state != uint32(windows.WAIT_TIMEOUT) {
+		return os.ErrProcessDone
+	}
 	// WM_CLOSE lets Chromium flush storage and honor beforeunload dialogs.
 	// No taskkill and no forced termination of other browser instances.
 	sent := false
 	cb := syscall.NewCallback(func(hwnd, unused uintptr) uintptr {
 		var pid uint32
 		windowPID.Call(hwnd, uintptr(unsafe.Pointer(&pid)))
-		if int(pid) == p.Pid {
+		if int(pid) == c.pid {
 			ok, _, _ := postMessage.Call(hwnd, 0x0010, 0, 0)
 			if ok != 0 {
 				sent = true

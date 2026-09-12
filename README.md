@@ -1,10 +1,31 @@
 # browser-session
 
-轻量、跨平台的 Chrome / Chromium 独立身份启动器。使用已安装的浏览器，每个 Session 使用独立的 `--user-data-dir`。Go 单文件程序，不嵌入 Chromium。
+轻量、跨平台的 Chrome / Chromium 独立身份启动器。使用已安装的浏览器，每个 Session 使用独立的 `--user-data-dir`。Go CLI + Wails 桌面 GUI，不打包 Chromium 引擎。
 
 **MVP / 待实机验收。** 平台测试状态见 [验证记录](docs/validation.md)。账户隔离不代表匿名、指纹隔离或操作系统安全边界。
 
-## 开始使用
+## 桌面 GUI
+
+现在提供中文桌面管理界面：新建持久/临时会话、打开、关闭、搜索/分类、查看目录与错误、确认后删除、清理遗留临时会话。GUI 与 CLI 共用同一套 Session 数据和进程看护逻辑；关闭管理窗口不会关闭正在运行的浏览器。
+
+**安装无需 Go、Node 或重新编译：** 登录有权访问本私有仓库的 GitHub 账号，进入 [Actions](https://github.com/aromaw/browser-session/actions/workflows/ci.yml)，打开最新成功的 CI，下载相应 `browser-session-gui-<平台>-<架构>` artifact。先解开 artifact 外层 ZIP，再解开里面的 GUI 安装包。
+
+| 系统 | 下载产物 | 安装与启动 |
+| --- | --- | --- |
+| macOS Apple Silicon | `browser-session-gui-darwin-arm64` | 将 `Browser Sessions.app` 拖入“应用程序”后双击 |
+| macOS Intel | `browser-session-gui-darwin-amd64` | 同上 |
+| Windows x64 | `browser-session-gui-windows-amd64` | 解压到自己的应用目录，双击 `browser-session-gui.exe`；可创建桌面快捷方式 |
+| Linux x64 / ARM64 | `browser-session-gui-linux-amd64` / `linux-arm64` | 安装 GTK 3、WebKitGTK 4.1 后，`chmod +x browser-session-gui`，直接运行 |
+
+GUI 基线：macOS 13+、Windows 10/11（需 Microsoft WebView2 Runtime）、Ubuntu 24.04 或提供兼容 GTK 3/WebKitGTK 4.1 的 Linux。Ubuntu 运行依赖：`sudo apt install libgtk-3-0t64 libwebkit2gtk-4.1-0`。Linux ZIP 附带 `.desktop` 与 SVG 图标；放入自己的 `~/.local/share/applications/` 和 `~/.local/share/icons/`，并将 binary 放入 PATH 后可从应用菜单启动。
+
+当前没有 Developer ID 签名/Apple 公证，也没有 Windows 代码签名，首次运行可能被系统拦截；请核对来源后按系统提供的单个应用允许流程处理，不要关闭系统整体安全保护。macOS 包只有 ad-hoc 签名。构建与真实测试范围见 [验证记录](docs/validation.md)。
+
+更新时下载新的 GUI 包并替换旧应用即可；会话数据在独立的平台数据目录中保留。替换前关闭管理窗口和所有由它启动的会话，避免 Windows 的运行文件锁。私有仓库保持私有即可，安装后的程序离线管理本机数据，不需要 GitHub 登录。尚未设置公开自动更新服务。
+
+[GUI 源码构建与设计说明](docs/gui.md) · [本次审查记录](docs/review.md)
+
+## CLI 开始使用
 
 需要本机已经安装 **Google Chrome 或 Chromium**。MVP 自动发现这两种浏览器；其他 Chromium 浏览器可手动指定 executable，但尚未作为受支持目标验收。
 
@@ -92,7 +113,7 @@ browser-session/
 
 ## 生命周期与安全边界
 
-- Unix 使用 SIGTERM 请求浏览器退出；Windows 使用属于该浏览器 PID 的窗口 `WM_CLOSE`。退出提示或下载可阻止关闭；超时后保留数据，不强杀。
+- Unix 使用 SIGTERM 请求浏览器退出；Windows 持有原始浏览器的独立进程句柄，在确认该进程仍存活后发送窗口 `WM_CLOSE`，避免等待线程释放句柄后的 PID 重用。退出提示或下载可阻止关闭；超时后保留数据，不强杀。
 - 关闭最后一个窗口不一定意味着 macOS 应用退出。必要时在该 Session 选择退出，或执行 `close NAME`。默认禁用 Chromium background mode。
 - 清理检查原始子进程、已知后代、进程启动时间、用户数据目录参数；Unix 额外跟踪独立进程组。连续一秒没有活跃进程后才自动删除临时数据。
 - 看护进程崩溃后，浏览器可继续运行。下一次运行任何管理命令会尝试恢复清理；活跃孤儿保留，手动关闭它后再 `cleanup`。管理器不会按过期 PID 杀进程。
@@ -109,6 +130,7 @@ browser-session/
 ```sh
 go test -race -count=1 ./...
 go vet ./...
+npm test # 可选：Node 22+，仅前端状态单测，无 npm 依赖
 ```
 
 真实 Chromium 测试为显式开启，仅操作测试生成的 localhost 数据，不使用 Playwright、Selenium 或 CDP：
@@ -117,6 +139,6 @@ go vet ./...
 BROWSER_SESSION_TEST_CHROME=/path/to/chrome go test -v ./internal/browser -run TestChromiumStorageIsolation
 ```
 
-CI 在 macOS / Linux / Windows 执行原生进程测试与 headless Chrome Storage 测试，并构建 `darwin-amd64`、`darwin-arm64`、`linux-amd64`、`linux-arm64`、`windows-amd64`。标记 `v*` tag 会在原生测试通过后生成压缩包、SHA256SUMS 和 **Draft Release**；未配置代码签名/公证。GUI 留待 CLI 验收之后。
+CI 在 macOS / Linux / Windows 执行原生进程测试，Linux/Windows 执行真实 headless Chrome Storage 测试（macOS hosted runner 的该项明确跳过），并构建 `darwin-amd64`、`darwin-arm64`、`linux-amd64`、`linux-arm64`、`windows-amd64`。标记 `v*` tag 会在原生测试通过后生成压缩包、SHA256SUMS 和 **Draft Release**；未配置代码签名/公证。GUI 也构建五个目标的 ZIP；真实原生窗口测试单独运行。
 
 MIT License，保留本仓库原有许可证。

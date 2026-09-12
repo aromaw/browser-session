@@ -1,12 +1,15 @@
 package session
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"time"
 
 	"github.com/aromaw/browser-session/internal/browser"
@@ -62,11 +65,22 @@ func (s *Store) active(v Session, r Run) ([]platform.Process, error) {
 	return (browser.Launcher{}).IsRunning(v.Browser.Executable, dir, r.Processes, r.Group)
 }
 func (s *Store) Status(v Session) string {
+	return s.status(v, s.active)
+}
+
+func (s *Store) status(v Session, active func(Session, Run) ([]platform.Process, error)) string {
 	l, ok, e := s.runLock(v.ID)
 	if e != nil {
 		return "unknown"
 	}
 	if !ok {
+		r, err := s.readRun(v.ID)
+		if err != nil {
+			return "unknown"
+		}
+		if r.Phase == "starting" {
+			return "starting"
+		}
 		return "running"
 	}
 	l.Close()
@@ -77,7 +91,7 @@ func (s *Store) Status(v Session) string {
 	if (r.Phase == "starting" || r.Phase == "reserved") && time.Since(r.Started) < 30*time.Second {
 		return "starting"
 	}
-	p, e := s.active(v, r)
+	p, e := active(v, r)
 	if e != nil {
 		return "unknown"
 	}
@@ -226,6 +240,10 @@ func (s *Store) Supervise(id, runID string, urls []string) error {
 		l.Close()
 		return e
 	}
+	control, controlErr := platform.CaptureBrowser(c.Process)
+	if controlErr == nil {
+		defer control.Release()
+	}
 	if runtime.GOOS != "windows" {
 		r.Group = c.Process.Pid
 	}
@@ -249,6 +267,7 @@ func (s *Store) Supervise(id, runID string, urls []string) error {
 	var exitErr error
 	empty := 0
 	closeSent := false
+	checkpoint := runCheckpoint{write: func(r Run) error { return s.writeRun(id, r) }}
 	ticker := time.NewTicker(250 * time.Millisecond)
 	defer ticker.Stop()
 	for range ticker.C {
@@ -261,7 +280,7 @@ func (s *Store) Supervise(id, runID string, urls []string) error {
 		owned, inspectErr := s.active(v, r)
 		if inspectErr != nil {
 			r.Error = "process inspection failed; cleanup deferred"
-			_ = s.writeRun(id, r)
+			_ = checkpoint.Save(r)
 			continue
 		}
 		r.Processes = owned
@@ -272,7 +291,9 @@ func (s *Store) Supervise(id, runID string, urls []string) error {
 		var closeID string
 		if !closeSent && readJSON(closePath, &closeID) == nil && closeID == runID {
 			if !exited {
-				if err := platform.CloseBrowser(c.Process); err != nil {
+				if controlErr != nil {
+					r.Error = "browser control unavailable; quit this session manually"
+				} else if err := control.CloseWindow(); err != nil {
 					r.Error = err.Error()
 				}
 			}
@@ -289,7 +310,7 @@ func (s *Store) Supervise(id, runID string, urls []string) error {
 		if time.Since(r.Started) >= 750*time.Millisecond && len(owned) > 0 {
 			r.Phase = "running"
 		}
-		if e = s.writeRun(id, r); e != nil {
+		if e = checkpoint.Save(r); e != nil {
 			return e
 		}
 	}
@@ -428,7 +449,7 @@ func (s *Store) Cleanup() []string {
 	for _, v := range c.Sessions {
 		if v.Type == "temporary" {
 			if e = s.deleteIfIdle(v, true); e != nil {
-				if s.Status(v) != "running" && s.Status(v) != "starting" {
+				if status := s.Status(v); status != "running" && status != "starting" {
 					notes = append(notes, v.Name+": "+e.Error())
 				}
 			}
@@ -448,3 +469,63 @@ func (s *Store) Detail(name string) (Session, Run, error) {
 	return v, r, e
 }
 func (s *Store) DataPath(v Session) string { p, _ := s.Dir(v.ID); return filepath.Clean(p) }
+
+// Persist changes, not a heartbeat. Process liveness comes from native APIs and
+// the lifetime lock; run.json is only recovery metadata. Stable ordering avoids
+// fsyncs when a native snapshot enumerates the same processes differently.
+type runCheckpoint struct {
+	last  []byte
+	write func(Run) error
+}
+
+func (c *runCheckpoint) Save(r Run) error {
+	r.Processes = append([]platform.Process(nil), r.Processes...)
+	sort.Slice(r.Processes, func(i, j int) bool { return r.Processes[i].PID < r.Processes[j].PID })
+	data, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+	if bytes.Equal(c.last, data) {
+		return nil
+	}
+	if err := c.write(r); err != nil {
+		return err
+	}
+	c.last = data
+	return nil
+}
+
+// Statuses shares one lazy native snapshot across the entire list. Supervised
+// sessions require only a lock/state read, with no process enumeration.
+func (s *Store) Statuses(values []Session) map[string]string {
+	var all []platform.Process
+	var boot string
+	var inspectErr error
+	loaded := false
+	probe := func(v Session, r Run) ([]platform.Process, error) {
+		if !loaded {
+			loaded = true
+			boot, inspectErr = platform.BootID()
+			if inspectErr == nil {
+				all, inspectErr = platform.Snapshot()
+			}
+		}
+		if inspectErr != nil {
+			return nil, inspectErr
+		}
+		dir, err := s.Dir(v.ID)
+		if err != nil {
+			return nil, err
+		}
+		if boot != r.Boot {
+			r.Group = 0
+			r.Processes = nil
+		}
+		return (browser.Launcher{}).InspectSnapshot(all, v.Browser.Executable, dir, r.Processes, r.Group)
+	}
+	out := make(map[string]string, len(values))
+	for _, v := range values {
+		out[v.ID] = s.status(v, probe)
+	}
+	return out
+}

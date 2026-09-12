@@ -5,6 +5,10 @@ on:
 permissions:
   contents: read
 jobs:
+  gui:
+    uses: ./.github/workflows/gui.yml
+    with:
+      version: ${{ github.ref_name }}
   test:
     strategy:
       fail-fast: false
@@ -18,7 +22,7 @@ jobs:
           go-version: stable
       - run: go test -race -count=1 -timeout=5m ./...
   release:
-    needs: test
+    needs: [test, gui]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -27,6 +31,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: stable
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: browser-session-gui-*
+          merge-multiple: true
+          path: dist
       - name: Build archives and checksums
         env:
           VERSION: ${{ github.ref_name }}

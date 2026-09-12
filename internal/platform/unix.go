@@ -28,9 +28,15 @@ func TryLock(path string) (*Lock, bool, error) {
 	}
 	return &Lock{f}, true, nil
 }
-func (l *Lock) Close()                 { _ = unix.Flock(int(l.f.Fd()), unix.LOCK_UN); _ = l.f.Close() }
-func Detach(c *exec.Cmd)               { c.SysProcAttr = &syscall.SysProcAttr{Setsid: true} }
-func PrepareBrowser(c *exec.Cmd)       { c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} }
-func CloseBrowser(p *os.Process) error { return p.Signal(syscall.SIGTERM) }
-func Replace(src, dst string) error    { return os.Rename(src, dst) }
-func SecureDir(path string) error      { return os.Chmod(path, 0700) }
+func (l *Lock) Close()           { _ = unix.Flock(int(l.f.Fd()), unix.LOCK_UN); _ = l.f.Close() }
+func Detach(c *exec.Cmd)         { c.SysProcAttr = &syscall.SysProcAttr{Setsid: true} }
+func PrepareBrowser(c *exec.Cmd) { c.SysProcAttr = &syscall.SysProcAttr{Setpgid: true} }
+
+type BrowserControl struct{ process *os.Process }
+
+// Capture before Wait can release the original process handle.
+func CaptureBrowser(p *os.Process) (*BrowserControl, error) { return &BrowserControl{p}, nil }
+func (c *BrowserControl) CloseWindow() error                { return c.process.Signal(syscall.SIGTERM) }
+func (c *BrowserControl) Release()                          {}
+func Replace(src, dst string) error                         { return os.Rename(src, dst) }
+func SecureDir(path string) error                           { return os.Chmod(path, 0700) }

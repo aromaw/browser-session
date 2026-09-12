@@ -1,8 +1,16 @@
 # 验证记录与验收方法
 
-日期：2026-09-11。**尚未声称完成全部 MVP 实机验收。**
+日期：2026-09-12。**尚未声称完成全部 MVP 实机验收。**
 
-## 本地环境
+## 本次 GUI 与审查改动
+
+- 本地新增 Go/race 测试和前端状态单测通过；受限 PID namespace 的 OS 测试仍显式跳过。未经该跳过运行的原生清理测试在本环境按预期拒绝进程检查，不能记为通过。
+- Windows GUI 正式构建及 ZIP 打包已本地交叉编译通过；尚不等于 Windows 原生运行通过。
+- 新 CI 增加五目标 GUI 包、Linux 两架构/Windows/macOS arm64 的真实系统 WebView + Wails 绑定 smoke test；首次执行结果待 CI 回报后更新本节。darwin-amd64 GUI 在 arm64 macOS runner 交叉构建，不声称 Intel 原生运行。
+- 当前预览浏览器策略拒绝访问本地文件，未完成截图人工检查。人工桌面验收仍保留在下方清单。
+- 专用 smoke binary 的测试代码不会嵌入生产应用；虚构内存预览也不会嵌入生产应用。
+
+## 既有核心验证与本地环境
 
 | 项目 | 结果 |
 | --- | --- |
@@ -21,7 +29,7 @@
 - 单元：参数注入、准确目录匹配、PID 重用、进程子树、互斥文件锁、随机 ID、非法名称、并发创建不丢数据、损坏 JSON 保留、符号链接拒绝、临时身份 reservation。
 - 原生 CLI 集成：编译后的测试 binary 模拟多进程浏览器；两个 Persistent 并行、重复打开拒绝、活跃删除拒绝、关闭 A 不影响 B、保留后重新打开、两个 Temporary 并行、父退出而子仍活跃时不删、子退出后删、supervisor 崩溃后活跃目录保留和退出后回收。Windows 使用真正的隐藏测试窗口验证 WM_CLOSE。
 - 显式真实浏览器集成：系统 Chrome headless + localhost 测试服务器 + 网页自身执行 JS。两个进程同时运行并等待同一 barrier；验证 Cookie、localStorage、sessionStorage、IndexedDB、CacheStorage、HTTP disk cache、Service Worker、OPFS 的独立性，随后重启检查持久化。只读取测试生成的 synthetic cookie，不读取任何真实身份的数据。
-- CI 目标：三 OS 的原生测试 + 三 OS 的 headless Chrome；五架构交叉编译。
+- CI：三 OS 的原生核心测试；Linux/Windows headless Chrome，macOS 此项显式跳过；CLI/GUI 各五目标构建。
 
 ## 桌面手工验收（仍须执行）
 

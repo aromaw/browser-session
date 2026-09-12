@@ -179,6 +179,11 @@ func (l Launcher) IsRunning(exe, dir string, known []platform.Process, group int
 	if e != nil {
 		return nil, e
 	}
+	return l.InspectSnapshot(all, exe, dir, known, group)
+}
+
+// InspectSnapshot applies the same fail-closed checks to a shared snapshot.
+func (l Launcher) InspectSnapshot(all []platform.Process, exe, dir string, known []platform.Process, group int) ([]platform.Process, error) {
 	for _, p := range all {
 		if p.Unreadable && strings.EqualFold(p.Name, filepath.Base(exe)) {
 			return nil, fmt.Errorf("cannot inspect browser PID %d; data retained", p.PID)

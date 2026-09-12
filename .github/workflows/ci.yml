@@ -7,6 +7,10 @@ on:
 permissions:
   contents: read
 jobs:
+  gui:
+    uses: ./.github/workflows/gui.yml
+    with:
+      version: dev-${{ github.sha }}
   test:
     strategy:
       fail-fast: false

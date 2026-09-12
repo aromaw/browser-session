@@ -1,0 +1,58 @@
+name: GUI builds
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        default: dev
+permissions:
+  contents: read
+jobs:
+  gui:
+    name: GUI ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: linux-amd64
+          - os: ubuntu-24.04-arm
+            target: linux-arm64
+          - os: macos-latest
+            target: darwin-amd64
+          - os: macos-latest
+            target: darwin-arm64
+          - os: windows-latest
+            target: windows-amd64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Linux native WebView dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev pkg-config xvfb
+      - name: UI state tests
+        run: npm test
+      - name: Build native GUI archive
+        env:
+          GUI_VERSION: ${{ inputs.version }}
+          GUI_TARGET: ${{ matrix.target }}
+        shell: bash
+        run: go run ./scripts/build-gui.go -target "$GUI_TARGET" -version "$GUI_VERSION"
+      - name: Real native WebView and Go binding smoke test
+        # Intel macOS is cross-compiled on the arm64 runner; the arm64 job tests
+        # the native engine. Both Linux architectures and Windows run natively.
+        if: matrix.target != 'darwin-amd64'
+        run: python scripts/test-gui.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-session-gui-${{ matrix.target }}
+          path: dist/browser-session-gui-*.zip
+          if-no-files-found: error

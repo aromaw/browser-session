@@ -43,15 +43,8 @@ func main() {
 	}
 }
 func run(args []string, out, errOut io.Writer) error {
-	if len(args) > 0 && args[0] == "__supervise" {
-		if len(args) < 4 {
-			return errors.New("invalid internal invocation")
-		}
-		s, e := session.NewStore(args[1])
-		if e != nil {
-			return e
-		}
-		return s.Supervise(args[2], args[3], args[4:])
+	if handled, err := session.DispatchSupervisor(args); handled {
+		return err
 	}
 	g := flag.NewFlagSet("browser-session", flag.ContinueOnError)
 	g.SetOutput(errOut)
@@ -155,8 +148,9 @@ func run(args []string, out, errOut io.Writer) error {
 			DataDir string `json:"dataDir"`
 		}
 		rows := []row{}
+		statuses := s.Statuses(c.Sessions)
 		for _, v := range c.Sessions {
-			rows = append(rows, row{v, s.Status(v), s.DataPath(v)})
+			rows = append(rows, row{v, statuses[v.ID], s.DataPath(v)})
 		}
 		if len(args) > 0 {
 			enc := json.NewEncoder(out)
