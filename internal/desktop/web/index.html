@@ -1,77 +1,308 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
-<title>Browser Sessions</title>
-<link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="style.css">
-<script type="module" src="app.js"></script>
-</head>
-<body>
-<div class="shell">
-  <aside class="sidebar">
-    <div class="brand"><img src="icon.svg" alt="" width="36" height="36"><div>Browser<span>Sessions</span></div></div>
-    <div class="nav-label">我的空间</div>
-    <nav aria-label="会话分类">
-      <button class="nav-item selected" data-filter="all" aria-current="page"><span data-icon="grid"></span>全部会话<span class="count" id="count-all">0</span></button>
-      <button class="nav-item" data-filter="persistent"><span data-icon="layers"></span>持久会话<span class="count" id="count-persistent">0</span></button>
-      <button class="nav-item" data-filter="temporary"><span data-icon="spark"></span>临时会话<span class="count" id="count-temporary">0</span></button>
-      <button class="nav-item" data-filter="running"><span data-icon="activity"></span>正在运行<span class="count" id="count-running">0</span></button>
-    </nav>
-    <div class="sidebar-bottom">
-      <div class="local-note"><span data-icon="shield"></span><strong>只在你的设备上</strong><p>每个会话，独立的浏览器空间。</p></div>
-      <button class="nav-item" id="about-button"><span data-icon="info"></span>使用说明</button>
-      <span class="version" id="version">Browser Sessions</span>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self'; img-src 'self' data:; connect-src 'self'; font-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'"
+    />
+    <title>Browser Sessions</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+    <script type="module" src="app.js"></script>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img src="icon.svg" alt="" width="36" height="36" />
+          <div>Browser<span>Sessions</span></div>
+        </div>
+        <div class="nav-label">我的空间</div>
+        <nav aria-label="会话分类">
+          <button
+            class="nav-item selected"
+            data-filter="all"
+            aria-current="page"
+          >
+            <span data-icon="grid"></span>全部会话<span
+              class="count"
+              id="count-all"
+              >0</span
+            >
+          </button>
+          <button class="nav-item" data-filter="persistent">
+            <span data-icon="layers"></span>持久会话<span
+              class="count"
+              id="count-persistent"
+              >0</span
+            >
+          </button>
+          <button class="nav-item" data-filter="temporary">
+            <span data-icon="spark"></span>临时会话<span
+              class="count"
+              id="count-temporary"
+              >0</span
+            >
+          </button>
+          <button class="nav-item" data-filter="running">
+            <span data-icon="activity"></span>正在运行<span
+              class="count"
+              id="count-running"
+              >0</span
+            >
+          </button>
+        </nav>
+        <div class="sidebar-bottom">
+          <div class="local-note">
+            <span data-icon="shield"></span><strong>只在你的设备上</strong>
+            <p>每个会话，独立的浏览器空间。</p>
+          </div>
+          <button class="nav-item" id="about-button">
+            <span data-icon="info"></span>使用说明
+          </button>
+          <span class="version" id="version">Browser Sessions</span>
+        </div>
+      </aside>
+      <main>
+        <header>
+          <div class="eyebrow">
+            <span class="dot"></span> 你的浏览器 · 你的身份
+          </div>
+          <div class="header-row">
+            <div>
+              <h1 id="page-title">全部会话</h1>
+              <p class="subtitle">把不同账号，安放在各自的空间。</p>
+            </div>
+            <button class="primary" id="new-button">
+              <span data-icon="plus"></span>新建会话
+            </button>
+          </div>
+        </header>
+        <section class="overview" aria-label="会话概览">
+          <div>
+            <span>独立空间</span><strong id="total">—</strong
+            ><small>所有浏览器会话</small>
+          </div>
+          <div>
+            <span>正在运行</span><strong id="active">—</strong
+            ><small><i class="dot"></i> 彼此独立，互不影响</small>
+          </div>
+          <div class="temporary-prompt">
+            <span class="temporary-icon" data-icon="spark"></span>
+            <div>
+              <strong>用完即走的空间</strong>
+              <p>浏览器完全退出后，自动清理数据。</p>
+              <button class="text-button" id="temp-button">
+                打开临时会话 <span aria-hidden="true">↗</span>
+              </button>
+            </div>
+          </div>
+        </section>
+        <div class="toolbar">
+          <label class="search"
+            ><span data-icon="search"></span
+            ><input
+              id="search"
+              type="search"
+              placeholder="搜索会话名称或浏览器…"
+              aria-label="搜索会话" /></label
+          ><button
+            id="refresh-button"
+            class="icon-button"
+            title="刷新会话"
+            aria-label="刷新会话"
+          >
+            <span data-icon="refresh"></span></button
+          ><button id="cleanup-button" class="secondary compact">
+            <span data-icon="broom"></span>清理遗留临时会话
+          </button>
+        </div>
+        <div id="error-banner" class="banner error" role="alert" hidden>
+          <span id="error-text"></span
+          ><button
+            id="dismiss-error"
+            class="text-button"
+            aria-label="关闭错误提示"
+          >
+            关闭
+          </button>
+        </div>
+        <div id="notice-banner" class="banner" role="status" hidden></div>
+        <section aria-label="会话列表" id="session-area" aria-busy="true">
+          <div class="list-heading">
+            <span>会话 / 浏览器</span><span>状态</span><span>操作</span>
+          </div>
+          <div id="rows"></div>
+          <div class="empty" id="empty">
+            <div class="empty-symbol" data-icon="layers"></div>
+            <h2 id="empty-title">正在读取会话…</h2>
+            <p id="empty-copy">连接本机的浏览器空间。</p>
+            <button class="primary" id="empty-create" hidden>
+              创建第一个会话
+            </button>
+          </div>
+        </section>
+        <footer>
+          <span data-icon="lock"></span
+          >登录状态和网站数据分别保存在各自的会话中。<span
+            id="shown-count"
+          ></span>
+        </footer>
+      </main>
     </div>
-  </aside>
-  <main>
-    <header><div class="eyebrow"><span class="dot"></span> 你的浏览器 · 你的身份</div><div class="header-row"><div><h1 id="page-title">全部会话</h1><p class="subtitle">把不同账号，安放在各自的空间。</p></div><button class="primary" id="new-button"><span data-icon="plus"></span>新建会话</button></div></header>
-    <section class="overview" aria-label="会话概览">
-      <div><span>独立空间</span><strong id="total">—</strong><small>所有浏览器会话</small></div>
-      <div><span>正在运行</span><strong id="active">—</strong><small><i class="dot"></i> 彼此独立，互不影响</small></div>
-      <div class="temporary-prompt"><span class="temporary-icon" data-icon="spark"></span><div><strong>用完即走的空间</strong><p>浏览器完全退出后，自动清理数据。</p><button class="text-button" id="temp-button">打开临时会话 <span aria-hidden="true">↗</span></button></div></div>
-    </section>
-    <div class="toolbar"><label class="search"><span data-icon="search"></span><input id="search" type="search" placeholder="搜索会话名称或浏览器…" aria-label="搜索会话"></label><button id="refresh-button" class="icon-button" title="刷新会话" aria-label="刷新会话"><span data-icon="refresh"></span></button><button id="cleanup-button" class="secondary compact"><span data-icon="broom"></span>清理遗留临时会话</button></div>
-    <div id="error-banner" class="banner error" role="alert" hidden><span id="error-text"></span><button id="dismiss-error" class="text-button" aria-label="关闭错误提示">关闭</button></div>
-    <div id="notice-banner" class="banner" role="status" hidden></div>
-    <section aria-label="会话列表" id="session-area" aria-busy="true">
-      <div class="list-heading"><span>会话 / 浏览器</span><span>状态</span><span>操作</span></div>
-      <div id="rows"></div>
-      <div class="empty" id="empty"><div class="empty-symbol" data-icon="layers"></div><h2 id="empty-title">正在读取会话…</h2><p id="empty-copy">连接本机的浏览器空间。</p><button class="primary" id="empty-create" hidden>创建第一个会话</button></div>
-    </section>
-    <footer><span data-icon="lock"></span>登录状态和网站数据分别保存在各自的会话中。<span id="shown-count"></span></footer>
-  </main>
-</div>
-<dialog id="create-dialog" aria-labelledby="create-title">
- <form id="create-form">
-  <div class="dialog-heading"><span class="dialog-icon" data-icon="layers"></span><button type="button" class="icon-button" data-dismiss="create-dialog" aria-label="关闭"><span data-icon="x"></span></button></div>
-  <h2 id="create-title">创建独立空间</h2><p class="dialog-intro" id="create-intro">登录一次，下次打开继续使用。</p>
-  <label id="name-field">会话名称<input id="session-name" name="name" placeholder="例如 personal、work、github-b" maxlength="48" pattern="[a-z][a-z0-9_-]{0,47}" required autocomplete="off"><small>以小写字母开头，支持数字、短横线和下划线。</small></label>
-  <label>使用浏览器<select id="browser-choice"><option value="auto">自动选择 Chrome / Chromium</option><option value="custom">手动指定浏览器…</option></select></label>
-  <div id="custom-browser" hidden><label>浏览器可执行文件<div class="input-action"><input id="browser-path" placeholder="浏览器可执行文件的完整路径" autocomplete="off"><button type="button" class="secondary" id="browse-button">浏览…</button></div><small>macOS 也可选择 Chrome / Chromium 的 .app。</small></label></div>
-  <label>打开网址 <span class="optional">可选</span><input id="create-url" type="url" placeholder="https://example.com" autocomplete="off"><small>留空打开空白页。网址不会保存在管理器配置中。</small></label>
-  <label class="checkbox" id="launch-field"><input type="checkbox" id="launch-now" checked> 创建后立即打开</label>
-  <p class="form-error" id="create-error" role="alert" hidden></p>
-  <div class="dialog-actions"><button type="button" class="secondary" data-dismiss="create-dialog">取消</button><button type="submit" class="primary" id="create-submit">创建并打开</button></div>
- </form>
-</dialog>
-<dialog id="detail-dialog" aria-labelledby="detail-title">
- <div class="dialog-heading"><span class="dialog-icon" data-icon="layers"></span><button class="icon-button" data-dismiss="detail-dialog" aria-label="关闭"><span data-icon="x"></span></button></div>
- <h2 id="detail-title"></h2><p class="dialog-intro" id="detail-type"></p>
- <dl id="details"></dl><p class="banner" id="detail-notice" hidden></p>
- <div class="dialog-actions spread"><button class="danger-text" id="delete-button"><span data-icon="trash"></span>删除会话…</button><button class="secondary" data-dismiss="detail-dialog">完成</button></div>
-</dialog>
-<dialog id="delete-dialog" aria-labelledby="delete-title">
- <h2 id="delete-title">永久删除会话？</h2><p class="dialog-intro">这个空间的登录状态和全部浏览器数据将被删除，无法恢复。请先关闭该会话的浏览器。</p>
- <form id="delete-form"><label>输入会话名称 <strong id="delete-name"></strong> 以确认<input id="delete-confirmation" autocomplete="off" required></label><p class="form-error" id="delete-error" role="alert" hidden></p><div class="dialog-actions"><button type="button" class="secondary" data-dismiss="delete-dialog">取消</button><button type="submit" class="danger" id="delete-submit" disabled>永久删除</button></div></form>
-</dialog>
-<dialog id="about-dialog" aria-labelledby="about-title">
- <div class="dialog-heading"><img src="icon.svg" alt="" width="42" height="42"><button class="icon-button" data-dismiss="about-dialog" aria-label="关闭"><span data-icon="x"></span></button></div>
- <h2 id="about-title">一个会话，一个独立空间。</h2>
- <div class="guide"><h3>持久会话</h3><p>关闭浏览器后，登录状态和网站数据保留。下次打开同一个会话即可继续。</p><h3>临时会话</h3><p>每次新建都是独立的环境。浏览器及其后台进程完全退出后，整个临时目录自动删除。下载到目录之外的文件会保留。</p><h3>关闭管理窗口</h3><p>已经打开的浏览器会继续运行。独立后台进程会继续照看临时会话的清理。</p><h3>关闭没有响应？</h3><p>查看浏览器中的确认对话框，或在该浏览器中选择退出。状态未知时会保留数据，避免误删正在使用的会话。</p></div>
- <div class="local-path"><span>本机会话目录</span><code id="data-root"></code></div><div class="dialog-actions"><button class="primary" data-dismiss="about-dialog">知道了</button></div>
-</dialog>
-<div id="toast" role="status" hidden></div>
-</body></html>
+    <dialog id="create-dialog" aria-labelledby="create-title">
+      <form id="create-form">
+        <div class="dialog-heading">
+          <span class="dialog-icon" data-icon="layers"></span
+          ><button
+            type="button"
+            class="icon-button"
+            data-dismiss="create-dialog"
+            aria-label="关闭"
+          >
+            <span data-icon="x"></span>
+          </button>
+        </div>
+        <h2 id="create-title">创建独立空间</h2>
+        <p class="dialog-intro" id="create-intro">
+          登录一次，下次打开继续使用。
+        </p>
+        <label id="name-field"
+          >会话名称<input
+            id="session-name"
+            name="name"
+            placeholder="例如 personal、work、github-b"
+            maxlength="48"
+            pattern="[a-z][a-z0-9_-]{0,47}"
+            required
+            autocomplete="off"
+          /><small>以小写字母开头，支持数字、短横线和下划线。</small></label
+        >
+        <label
+          >使用浏览器<select id="browser-choice">
+            <option value="auto">自动选择 Chrome / Chromium</option>
+            <option value="custom">手动指定浏览器…</option>
+          </select></label
+        >
+        <div id="custom-browser" hidden>
+          <label
+            >浏览器可执行文件
+            <div class="input-action">
+              <input
+                id="browser-path"
+                placeholder="浏览器可执行文件的完整路径"
+                autocomplete="off"
+              /><button type="button" class="secondary" id="browse-button">
+                浏览…
+              </button>
+            </div>
+            <small>macOS 也可选择 Chrome / Chromium 的 .app。</small></label
+          >
+        </div>
+        <label
+          >打开网址 <span class="optional">可选</span
+          ><input
+            id="create-url"
+            type="url"
+            placeholder="https://example.com"
+            autocomplete="off"
+          /><small>留空打开空白页。网址不会保存在管理器配置中。</small></label
+        >
+        <label class="checkbox" id="launch-field"
+          ><input type="checkbox" id="launch-now" checked />
+          创建后立即打开</label
+        >
+        <p class="form-error" id="create-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button type="button" class="secondary" data-dismiss="create-dialog">
+            取消</button
+          ><button type="submit" class="primary" id="create-submit">
+            创建并打开
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="detail-dialog" aria-labelledby="detail-title">
+      <div class="dialog-heading">
+        <span class="dialog-icon" data-icon="layers"></span
+        ><button
+          class="icon-button"
+          data-dismiss="detail-dialog"
+          aria-label="关闭"
+        >
+          <span data-icon="x"></span>
+        </button>
+      </div>
+      <h2 id="detail-title"></h2>
+      <p class="dialog-intro" id="detail-type"></p>
+      <dl id="details"></dl>
+      <p class="banner" id="detail-notice" hidden></p>
+      <div class="dialog-actions spread">
+        <button class="danger-text" id="delete-button">
+          <span data-icon="trash"></span>删除会话…</button
+        ><button class="secondary" data-dismiss="detail-dialog">完成</button>
+      </div>
+    </dialog>
+    <dialog id="delete-dialog" aria-labelledby="delete-title">
+      <h2 id="delete-title">永久删除会话？</h2>
+      <p class="dialog-intro">
+        这个空间的登录状态和全部浏览器数据将被删除，无法恢复。请先关闭该会话的浏览器。
+      </p>
+      <form id="delete-form">
+        <label
+          >输入会话名称 <strong id="delete-name"></strong> 以确认<input
+            id="delete-confirmation"
+            autocomplete="off"
+            required
+        /></label>
+        <p class="form-error" id="delete-error" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button type="button" class="secondary" data-dismiss="delete-dialog">
+            取消</button
+          ><button type="submit" class="danger" id="delete-submit" disabled>
+            永久删除
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <dialog id="about-dialog" aria-labelledby="about-title">
+      <div class="dialog-heading">
+        <img src="icon.svg" alt="" width="42" height="42" /><button
+          class="icon-button"
+          data-dismiss="about-dialog"
+          aria-label="关闭"
+        >
+          <span data-icon="x"></span>
+        </button>
+      </div>
+      <h2 id="about-title">一个会话，一个独立空间。</h2>
+      <div class="guide">
+        <h3>持久会话</h3>
+        <p>
+          关闭浏览器后，登录状态和网站数据保留。下次打开同一个会话即可继续。
+        </p>
+        <h3>临时会话</h3>
+        <p>
+          每次新建都是独立的环境。浏览器及其后台进程完全退出后，整个临时目录自动删除。下载到目录之外的文件会保留。
+        </p>
+        <h3>关闭管理窗口</h3>
+        <p>
+          已经打开的浏览器会继续运行。独立后台进程会继续照看临时会话的清理。
+        </p>
+        <h3>关闭没有响应？</h3>
+        <p>
+          查看浏览器中的确认对话框，或在该浏览器中选择退出。状态未知时会保留数据，避免误删正在使用的会话。
+        </p>
+      </div>
+      <div class="local-path">
+        <span>本机会话目录</span><code id="data-root"></code>
+      </div>
+      <div class="dialog-actions">
+        <button class="primary" data-dismiss="about-dialog">知道了</button>
+      </div>
+    </dialog>
+    <div id="toast" role="status" hidden></div>
+  </body>
+</html>

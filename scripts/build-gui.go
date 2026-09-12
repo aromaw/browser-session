@@ -63,6 +63,9 @@ func build(target, version string, smoke bool) error {
 	}
 	cmd := exec.Command("go", "build", "-trimpath", "-tags", tags, "-ldflags", ldflags, "-o", binary, "./cmd/browser-session-gui")
 	cmd.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+arch)
+	if goos == "darwin" {
+		cmd.Env = append(cmd.Env, "MACOSX_DEPLOYMENT_TARGET=13.0")
+	}
 	if goos == "windows" {
 		cmd.Env = append(cmd.Env, "CGO_ENABLED=0")
 	} else {

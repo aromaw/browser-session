@@ -47,8 +47,7 @@ func (a *App) Snapshot() (State, error) {
 	}
 	statuses := a.store.Statuses(config.Sessions)
 	for _, v := range config.Sessions {
-		_, run, err := a.store.Detail(v.ID)
-		notice := run.Error
+		notice, err := a.store.Notice(v.ID)
 		if err != nil {
 			notice = "状态可能已更新，请刷新。"
 		}

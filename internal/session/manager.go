@@ -311,7 +311,9 @@ func (s *Store) Supervise(id, runID string, urls []string) error {
 			r.Phase = "running"
 		}
 		if e = checkpoint.Save(r); e != nil {
-			return e
+			// Keep the lifetime lock and process watch during transient disk errors.
+			// The checkpoint is not advanced, so a later tick retries the write.
+			r.Error = "state could not be saved; process supervision continues"
 		}
 	}
 	r.Phase = "stopped"
@@ -469,6 +471,16 @@ func (s *Store) Detail(name string) (Session, Run, error) {
 	return v, r, e
 }
 func (s *Store) DataPath(v Session) string { p, _ := s.Dir(v.ID); return filepath.Clean(p) }
+
+// Notice reads only recovery metadata, avoiding an O(n²) config re-read when a
+// GUI already has a validated list of sessions.
+func (s *Store) Notice(id string) (string, error) {
+	r, err := s.readRun(id)
+	if os.IsNotExist(err) {
+		return "", nil
+	}
+	return r.Error, err
+}
 
 // Persist changes, not a heartbeat. Process liveness comes from native APIs and
 // the lifetime lock; run.json is only recovery metadata. Stable ordering avoids

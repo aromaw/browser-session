@@ -2,5 +2,7 @@
   "name": "browser-session-ui-tests",
   "private": true,
   "type": "module",
-  "scripts": {"test": "node --test internal/desktop/model.test.mjs"}
+  "scripts": {
+    "test": "node --test internal/desktop/model.test.mjs"
+  }
 }

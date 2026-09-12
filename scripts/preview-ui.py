@@ -5,10 +5,10 @@ root = Path(__file__).resolve().parents[1]
 web = root / 'internal/desktop/web'
 html = (web / 'index.html').read_text()
 html = html.replace("style-src 'self'", "style-src 'self' 'unsafe-inline'")
-html = html.replace('<link rel="stylesheet" href="style.css">', '<style>' + (web / 'style.css').read_text() + '</style>')
+html = re.sub(r'<link rel="stylesheet" href="style.css"\s*/?>', lambda _: '<style>' + (web / 'style.css').read_text() + '</style>', html)
 html = html.replace('<script type="module" src="app.js"></script>', '')
 model = (web / 'model.js').read_text().replace('export ', '')
-app = re.sub(r'^import .*?;\n', '', (web / 'app.js').read_text(), count=1)
+app = re.sub(r'^import [\s\S]*?;\n', '', (web / 'app.js').read_text(), count=1)
 fixture = (root / 'internal/desktop/testdata/fixture.js').read_text()
 html = html.replace('</body>', '<script>' + fixture + model + app + '</script></body>')
 out = root / 'dist/ui-preview'
