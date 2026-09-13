@@ -23,7 +23,7 @@ GUI 基线：macOS 13+、Windows 10/11（需 Microsoft WebView2 Runtime）、Ubu
 
 更新时下载新的 GUI 包并替换旧应用即可；会话数据在独立的平台数据目录中保留。替换前关闭管理窗口和所有由它启动的会话，避免 Windows 的运行文件锁。私有仓库保持私有即可，安装后的程序离线管理本机数据，不需要 GitHub 登录。尚未设置公开自动更新服务。
 
-[GUI 源码构建与设计说明](docs/gui.md) · [本次审查记录](docs/review.md)
+[已验证构建及 GUI 下载](https://github.com/aromaw/browser-session/actions/runs/34685019364) · [GUI 源码构建与设计说明](docs/gui.md) · [本次审查记录](docs/review.md)
 
 ## CLI 开始使用
 

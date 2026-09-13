@@ -1,12 +1,15 @@
 # 验证记录与验收方法
 
-日期：2026-09-12。**尚未声称完成全部 MVP 实机验收。**
+更新：2026-09-13；CI 执行日期：2026-09-12。**尚未声称完成全部 MVP 实机验收。**
 
 ## 本次 GUI 与审查改动
 
 - 本地新增 Go/race 测试和前端状态单测通过；受限 PID namespace 的 OS 测试仍显式跳过。未经该跳过运行的原生清理测试在本环境按预期拒绝进程检查，不能记为通过。
-- Windows GUI 正式构建及 ZIP 打包已本地交叉编译通过；尚不等于 Windows 原生运行通过。
-- 新 CI 增加五目标 GUI 包、Linux 两架构/Windows/macOS arm64 的真实系统 WebView + Wails 绑定 smoke test；首次执行结果待 CI 回报后更新本节。darwin-amd64 GUI 在 arm64 macOS runner 交叉构建，不声称 Intel 原生运行。
+- Windows GUI 本地交叉编译与 ZIP 打包通过；GitHub Windows runner 上的真实系统 WebView 和 Go 绑定测试也已通过。
+- [最终 CI #34685019364](https://github.com/aromaw/browser-session/actions/runs/34685019364) 全部 13 个任务成功，对应代码提交 `7e1018006010e8b1e5a54bf3ca635261c47a51df`。后续文档提交不改变被测代码。
+- CLI 与 GUI 均生成 `darwin-amd64`、`darwin-arm64`、`linux-amd64`、`linux-arm64`、`windows-amd64` 五目标产物。
+- Linux amd64/arm64、Windows amd64、macOS arm64 的真实系统 WebView + Wails 绑定 smoke test 均输出 PASS，覆盖创建持久会话（不启动 Chrome）、搜索、详情、名称确认删除、删除和空状态。**这不是通过 GUI 完成 Chrome 登录/退出生命周期的人工验收。**
+- darwin-amd64 GUI 在 arm64 macOS runner 交叉构建，不声称 Intel 原生运行。macOS 首轮暴露的 UniformTypeIdentifiers 框架链接问题已修复；最终两架构打包通过，arm64 原生窗口测试通过。
 - 当前预览浏览器策略拒绝访问本地文件，未完成截图人工检查。人工桌面验收仍保留在下方清单。
 - 专用 smoke binary 的测试代码不会嵌入生产应用；虚构内存预览也不会嵌入生产应用。
 
@@ -19,7 +22,7 @@
 | 五目标 binary 交叉构建 | 五目标本地交叉构建均通过；无 CGO，单文件约 3.3–3.6 MB |
 | Linux 真实 Chrome | Chrome for Testing 153.0.8010.36 下载成功；运行被环境拒绝创建 Unix socket（EPERM），未完成浏览器测试 |
 | 本地 `/proc` 进程集成 | 工具环境的 getpid 与 /proc namespace 不一致，测试发现后产品改为拒绝清理；未假装通过 |
-| macOS / Windows GUI | 当前没有对应本地桌面，未实测；GitHub macOS/Windows 原生生命周期测试通过 |
+| 本地 macOS / Windows 桌面 | 当前没有对应本地桌面；GitHub 原生 GUI smoke test 结果见上节 |
 | GitHub 三平台 CI | Linux/Windows 真实 Chrome Storage 测试通过；macOS hosted runner 的 headless display link 不稳定，真实 Storage 测试明确 skip，原生生命周期测试通过；不可将 skip 视为 Storage 已在 macOS 实测 |
 
 受限本地环境使用 `BROWSER_SESSION_SKIP_OS_TESTS=1 go test -race ./...`，只跳过命名明确的 OS 进程测试。CI 不设置这个变量。真实浏览器测试必须显式设置 `BROWSER_SESSION_TEST_CHROME`，否则 Go 输出 SKIP。
