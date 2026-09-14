@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,12 +14,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/aromaw/browser-session/internal/native"
 	"github.com/aromaw/browser-session/internal/platform"
 	"github.com/aromaw/browser-session/internal/session"
 )
 
 func TestMain(m *testing.M) {
-	if len(os.Args) > 1 && os.Args[1] == "__supervise" {
+	if len(os.Args) > 1 && (os.Args[1] == "__supervise" || strings.HasPrefix(os.Args[1], "chrome-extension://")) {
 		if e := run(os.Args[1:], os.Stdout, os.Stderr); e != nil {
 			os.Exit(1)
 		}
@@ -220,4 +223,63 @@ func TestCLIRejectsUnsafeInput(t *testing.T) {
 	if !strings.Contains(out.String(), "browser-session open") {
 		t.Fatal(fmt.Sprint(out.String()))
 	}
+}
+
+func TestNativeMessageLaunchSurvivesHostExit(t *testing.T) {
+	s := fixture(t)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_DATA_HOME", home)
+	t.Setenv("LOCALAPPDATA", home)
+	exe, _ := os.Executable()
+	// Write only test configuration, never register in a real browser or registry.
+	config := native.Config{Origin: "chrome-extension://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/", Root: s.Root, Browser: exe}
+	root, err := platform.DataHome()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = os.MkdirAll(root, 0700); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := json.Marshal(config)
+	if err = os.WriteFile(filepath.Join(root, "native-host.json"), data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	launch := func() native.Response {
+		var in, out bytes.Buffer
+		data := []byte(`{"op":"new-session","url":"https://example.com"}`)
+		_ = binary.Write(&in, binary.NativeEndian, uint32(len(data)))
+		in.Write(data)
+		cmd := exec.Command(exe, config.Origin)
+		cmd.Stdin = &in
+		cmd.Stdout = &out
+		if err := cmd.Run(); err != nil {
+			t.Fatal(err)
+		}
+		var size uint32
+		if err := binary.Read(&out, binary.NativeEndian, &size); err != nil {
+			t.Fatal(err)
+		}
+		var response native.Response
+		if err := json.Unmarshal(out.Bytes(), &response); err != nil || !response.OK {
+			t.Fatal(response, err)
+		}
+		return response
+	}
+	a, b := launch(), launch()
+	av, _ := s.Lookup(a.Name)
+	bv, _ := s.Lookup(b.Name)
+	if av.ID == bv.ID || s.Status(av) != "running" || s.Status(bv) != "running" {
+		t.Fatal("host exit lost session isolation/lifetime")
+	}
+	if err = s.Close(a.Name); err != nil {
+		t.Fatal(err)
+	}
+	if s.Status(bv) != "running" {
+		t.Fatal("closing A affected B")
+	}
+	if err = s.Close(b.Name); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, func() bool { c, _ := s.Read(); return len(c.Sessions) == 0 })
 }

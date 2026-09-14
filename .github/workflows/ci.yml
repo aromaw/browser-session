@@ -7,6 +7,22 @@ on:
 permissions:
   contents: read
 jobs:
+  extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test extension/request.test.mjs
+      - name: Package unpacked Chrome extension
+        run: |
+          mkdir -p dist/extension
+          cp extension/manifest.json extension/background.js extension/request.js extension/setup.html extension/setup.js extension/setup.css dist/extension/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-session-chrome-extension
+          path: dist/extension/
   gui:
     uses: ./.github/workflows/gui.yml
     with:

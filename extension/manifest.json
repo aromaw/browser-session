@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Browser Session — New Session",
+  "version": "0.3.0",
+  "description": "在全新、完整隔离的 Chrome 临时 Profile 中打开当前网址。需要本机 browser-session 组件。",
+  "permissions": ["activeTab", "nativeMessaging"],
+  "background": {"service_worker": "background.js", "type": "module"},
+  "action": {"default_title": "New Session · 用新身份打开当前网页"},
+  "options_page": "setup.html"
+}

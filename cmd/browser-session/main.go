@@ -11,6 +11,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/aromaw/browser-session/internal/browser"
+	"github.com/aromaw/browser-session/internal/native"
 	"github.com/aromaw/browser-session/internal/session"
 )
 
@@ -20,6 +21,7 @@ const usage = `browser-session — independent Chrome / Chromium sessions
 
 Usage:
   browser-session browsers
+  browser-session install-extension --extension-id ID [--browser PATH] [--chrome-data-dir PATH]
   browser-session create NAME [--browser chrome|chromium|/path/to/executable]
   browser-session open NAME [https://example.com ...]
   browser-session temp [--browser PATH] [https://example.com ...]
@@ -45,6 +47,9 @@ func main() {
 func run(args []string, out, errOut io.Writer) error {
 	if handled, err := session.DispatchSupervisor(args); handled {
 		return err
+	}
+	if len(args) > 0 && strings.HasPrefix(args[0], "chrome-extension://") {
+		return native.Run(args[0], os.Stdin, out)
 	}
 	g := flag.NewFlagSet("browser-session", flag.ContinueOnError)
 	g.SetOutput(errOut)
@@ -74,6 +79,25 @@ func run(args []string, out, errOut io.Writer) error {
 		for _, b := range (browser.Launcher{}).DetectBrowsers() {
 			fmt.Fprintf(out, "%s\t%s\n", b.ID, b.Executable)
 		}
+		return nil
+	}
+	if command == "install-extension" {
+		fs := flag.NewFlagSet(command, flag.ContinueOnError)
+		fs.SetOutput(errOut)
+		id := fs.String("extension-id", "", "extension ID from chrome://extensions")
+		choice := fs.String("browser", "chrome", "Chrome executable")
+		chromeRoot := fs.String("chrome-data-dir", "", "custom source Chrome user-data-dir")
+		if e := fs.Parse(args); e != nil {
+			return e
+		}
+		if fs.NArg() != 0 {
+			return errors.New("unexpected install arguments")
+		}
+		path, e := native.Install(*id, *choice, *root, *chromeRoot)
+		if e != nil {
+			return e
+		}
+		fmt.Fprintln(out, "Native host registered:", path)
 		return nil
 	}
 	s, e := session.NewStore(*root)

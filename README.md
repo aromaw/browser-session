@@ -4,6 +4,25 @@
 
 **MVP / 待实机验收。** 平台测试状态见 [验证记录](docs/validation.md)。账户隔离不代表匿名、指纹隔离或操作系统安全边界。
 
+## 推荐入口：Chrome 一键 New Session
+
+下载新的 CLI 和 `browser-session-chrome-extension` 构建产物。插件需要一次性注册本机组件，日常无需打开 GUI：
+
+1. 将 CLI 可执行文件放到固定目录（例如你自己的工具目录），不要从会自动清理的临时目录运行。
+2. 解压扩展，打开 `chrome://extensions`，启用“开发者模式”，点“加载已解压的扩展程序”，选择含 `manifest.json` 的目录。
+3. 扩展会打开设置页。复制其中带有你的扩展 ID 的安装命令，在 CLI 所在目录执行：
+
+   ```sh
+   ./browser-session install-extension --extension-id 扩展ID
+   ```
+
+   Windows 使用 `.\browser-session.exe install-extension --extension-id 扩展ID`。macOS/Linux 如需添加权限，先执行 `chmod +x browser-session`。
+4. 将插件固定到 Chrome 工具栏。停留在目标网页，点击 **New Session** 图标，就会在独立临时 Profile 的新窗口打开当前网址。
+
+每次点击创建新身份，不需要命名，不复制 Cookie。退出新 Chrome 实例后自动清理，原页面不受影响。新 Profile 不会自动安装这个扩展；需要继续创建身份时回到原窗口点击。支持 HTTP/HTTPS 网页，不支持 Chrome 内部页面或本地文件。
+
+[插件安装、更新和卸载说明](docs/extension.md)。这不是 Chrome 商店发布版本，需要加载已解压扩展；组织策略可能禁止开发者模式或 Native Messaging。
+
 ## 桌面 GUI
 
 现在提供中文桌面管理界面：新建持久/临时会话、打开、关闭、搜索/分类、查看目录与错误、确认后删除、清理遗留临时会话。GUI 与 CLI 共用同一套 Session 数据和进程看护逻辑；关闭管理窗口不会关闭正在运行的浏览器。

@@ -55,6 +55,9 @@ jobs:
               tar -czf "dist/browser-session-$VERSION-$target.tar.gz" -C "$stage" "$name" LICENSE README.md
             fi
           done
+          mkdir -p dist/extension
+          cp extension/manifest.json extension/background.js extension/request.js extension/setup.html extension/setup.js extension/setup.css dist/extension/
+          (cd dist && zip -qr "browser-session-extension-$VERSION.zip" extension)
           (cd dist && sha256sum *.tar.gz *.zip > SHA256SUMS)
       - name: Publish draft release for review
         env:
